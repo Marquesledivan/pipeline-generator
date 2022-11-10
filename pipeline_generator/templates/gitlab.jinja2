@@ -1,0 +1,43 @@
+stages:
+  - terragrunt-plan
+  - terragrunt-apply
+
+default:
+  image: {{ image_registry }}
+
+variables:
+  TERRAPLAN_NAME: tfplan
+
+.terragrunt_template:
+  before_script:
+    - mkdir -p ~/.ssh
+    - echo "$GITLAB_DEPLOY_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - eval $(ssh-agent -s)
+    - ssh-add ~/.ssh/id_rsa
+{% for extra_known_host in extra_known_hosts %}
+    - ssh-keyscan -H {{ extra_known_host }} >> ~/.ssh/known_hosts
+{% endfor %}
+    - ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+    - LOCATION=$(echo ${CI_JOB_NAME} | cut -d":" -f2)
+    - cd ${LOCATION}
+    - tfenv install
+
+{% for account in account_list %}
+.{{ account }}_terragrunt_plan_template:
+  stage: terragrunt-plan
+  extends: .terragrunt_template
+  tags:
+    - {{ tags_runner }}
+  script:
+    - terragrunt plan -input=false -refresh=true -out=$TERRAPLAN_NAME
+
+.{{ account }}_terragrunt_apply_template:
+  stage: terragrunt-apply
+  extends: .terragrunt_template
+  when: manual
+  tags:
+    - {{ tags_runner }}
+  script:
+    - terragrunt apply -input=false -refresh=false -auto-approve=true $TERRAPLAN_NAME
+{% endfor %}
