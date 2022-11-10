@@ -21,7 +21,16 @@ variables:
     - ssh-keyscan -H github.com >> ~/.ssh/known_hosts
     - LOCATION=$(echo ${CI_JOB_NAME} | cut -d":" -f2)
     - cd ${LOCATION}
+{% if enable_asdf %}
+    - git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.10.2
+    - . $HOME/.asdf/asdf.sh
+    - asdf plugin-add terraform https://github.com/asdf-community/asdf-hashicorp.git
+    - asdf plugin-add terragrunt https://github.com/ohmer/asdf-terragrunt.git
+    - asdf install
+{% else %}
     - tfenv install
+{% endif %} 
+
 
 {% for account in account_list %}
 .{{ account }}_terragrunt_plan_template:

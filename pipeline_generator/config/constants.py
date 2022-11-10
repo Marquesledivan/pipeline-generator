@@ -12,4 +12,4 @@ IGNORE_RE_LIST = [
 
 IMAGE_DEFAULT = 'craftech/ci-tools:iac-tools-deaefcf14545724c6e4851c2841a9ae502f00380'
 
-TAGS_RUNNER = "null"
+ENABLE_ASDF = True
