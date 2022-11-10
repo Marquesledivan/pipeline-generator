@@ -8,7 +8,6 @@ This is a Python CLI that generates *.gitlab-ci.yml* or *bitbucket-pipelines.yml
 * Python 3.6 or higher
 * pip
 * docker(optional)
-* pyhcl
 
 ## Install package 
 
@@ -72,46 +71,8 @@ $ pipeline-generator  -e gitlab.foo.com -e gitlab.bar.com -o .gitlab-ci.yml
 #### Requirements
 
 Image requirements(already installed in the default image):
-* vault-cli
 * jq
-
-CI/CD environment variables:
-* **VAULT_ADDR**: Address of the Vault server expressed as a URL and port (https://www.vaultproject.io/docs/commands#vault_addr)
-
-CI/CD environment variables for `userpass` authentication method:
-* **VAULT_USERNAME** 
-* **VAULT_PASSWORD**
-
-#### How to use it
-
-You can use the flag `--enable-vault-envs` to download environment variables from a Vault server
-
-```shell
-$ pipeline-generator --enable-vault-envs
-```
-By default, it uses the `jwt` authentication method with a role named `terraform-pipeline` and a root path named `terraform`.
-
-JWT authentication method reference:
-https://docs.gitlab.com/ee/ci/examples/authenticating-with-hashicorp-vault/
-https://www.vaultproject.io/docs/auth/jwt#jwt-authentication
-
-To change the role name use the flag `--vault-role`:
-
-```shell
-$ pipeline-generator --enable-vault-envs --vault-role=mycustomrole
-```
-
-To change the Vault root path use the flag `--vault-base-path`:
-
-```shell
-$ pipeline-generator --enable-vault-envs --vault-base-path=gitlab-ci-secrets
-```
-
-If you want to the `userpass` auth method instead `jwt`, use the flag `--vault-auth-method`:
-
-```shell
-$ pipeline-generator --enable-vault-envs --vault-auth-method=userpass
-```
+* pyhcl
 
 ### Avoid GitLab variable inheritance conflicts
 
@@ -209,13 +170,6 @@ Options:
                                   ~/.ssh/known_hosts. i.e: gitlab.com
   -b, --branch TEXT               Default branch name  [default: master]
   --export-aws-vars               Export AWS variables in the script section
-  --enable-vault-envs             Enable vault to download environment
-                                  variables
-  --vault-role TEXT               Vault role name  [default: terraform-
-                                  pipeline]
-  --vault-base-path TEXT          Vault base path  [default: terraform]
-  --vault-auth-method [jwt|userpass]
-                                  Vault auth method  [default: jwt]
   --help                          Show this message and exit.
 ```
 
