@@ -49,7 +49,6 @@ terragrunt-plan:{{ ci_path.path.parent }}:
     name: {{ ci_path.environment|default(ci_path.account, true) }}
   only:
     refs:
-      - merge_requests
       - {{ branch_name }}
     changes:
       - {{ ci_path.path.parent }}/*
