@@ -2,10 +2,8 @@ name: CI to Docker Hub
 
 on:
   push:
-    tags:
-      - "v*.*.*"
-#    branches:
-#      - master
+    branches:
+      - main
 jobs:
   docker:
     runs-on: ubuntu-latest
@@ -35,7 +33,6 @@ jobs:
         run: echo "::set-output name=tag::${GITHUB_REF##*/}"
         id: version
 
-
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v1
@@ -44,11 +41,23 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: ${{ secrets.DOCKER_REPOSITORY }}
           context: .
-#           cache-from: type=local,src=/tmp/.buildx-cache
-#           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: latest, ${{ steps.version.outputs.tag }}
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
 
-
+  git_tags:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create a GitHub release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.tag_version.outputs.new_tag }}
+          name: Release ${{ steps.tag_version.outputs.new_tag }}
+          body: ${{ steps.tag_version.outputs.changelog }}

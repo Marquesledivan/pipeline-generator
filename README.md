@@ -198,7 +198,7 @@ $ docker run --rm -it --name pipeline-generator --env LOCAL_USER_ID=$(id -u) -v 
 
 ```shell
 $ cd ~/repos/foo/infra/infrastructure-live-foo
-$ pipeline-generator -i "craftech/ci-tools:iac-tools-85d40e6" -e gitlab.foo.com -p gitlab
+$ pipeline-generator -i "ledivanbernardomarques/ci-tools:iac-tools-85d40e6" -e gitlab.foo.com -p gitlab
 
 stages:
   - terragrunt plan
