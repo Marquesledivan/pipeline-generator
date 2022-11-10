@@ -11,7 +11,7 @@ GIT_PROVIDER_DICT = get_template_dict()
 @click.version_option()
 @click.option('--image-registry', '-i', 'image_registry', type=str, default=IMAGE_DEFAULT,
               help='Registry for default image')
-@click.option('--enable_asdf', '-i', 'enable_asdf', type=str, default=ENABLE_ASDF,
+@click.option('--enable_asdf', '-a', 'enable_asdf', type=str, default=ENABLE_ASDF,
               help='Tags for runner')
 @click.option('--provider', '-p', 'git_provider', type=click.Choice(list(GIT_PROVIDER_DICT.keys())), default='gitlab',
               show_default=True, help='Git provider, i.e: gitlab')
