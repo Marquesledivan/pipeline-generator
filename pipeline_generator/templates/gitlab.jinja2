@@ -44,9 +44,9 @@ variables:
 
 {% for ci_path in ci_path_list  %}
 terragrunt-plan:{{ ci_path.path.parent }}:
-  extends: .{{ ci_path.account }}_terragrunt_plan_template
+  extends: .{{ ci_path.region }}_terragrunt_plan_template
   environment:
-    name: {{ ci_path.environment|default(ci_path.account, true) }}
+    name: {{ ci_path.region|default(ci_path.account, true) }}
   only:
     refs:
       - {{ branch_name }}
@@ -59,9 +59,9 @@ terragrunt-plan:{{ ci_path.path.parent }}:
     expire_in: 1 day
 
 terragrunt-apply:{{ ci_path.path.parent }}:
-  extends: .{{ ci_path.account }}_terragrunt_apply_template
+  extends: .{{ ci_path.region }}_terragrunt_apply_template
   environment:
-    name: {{ ci_path.environment|default(ci_path.account, true) }}
+    name: {{ ci_path.region|default(ci_path.account, true) }}
   only:
     refs:
       - {{ branch_name }}
@@ -70,3 +70,4 @@ terragrunt-apply:{{ ci_path.path.parent }}:
   dependencies:
     - terragrunt-plan:{{ ci_path.path.parent }}
 {% endfor %}
+
