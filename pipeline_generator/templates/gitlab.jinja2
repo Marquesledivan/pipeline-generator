@@ -38,7 +38,7 @@ variables:
   tags:
     - {{ tags_runner }}
   script:
-    - terragrunt plan -input=false -refresh=true -out=$TERRAPLAN_NAME
+    - terragrunt plan --terragrunt-non-interactive -input=false -refresh=true -out=$TERRAPLAN_NAME
 
 .{{ account }}_terragrunt_apply_template:
   stage: terragrunt-apply
