@@ -6,7 +6,6 @@ from pipeline_generator.libs.ci_path_lib import (
     get_path_list,
     get_runner_list,
     get_aws_assume_role,
-    get_region_list,
 )
 
 
@@ -28,5 +27,4 @@ def render_ci_template(template_path: str, **kwargs):
     kwargs["account_list"] = get_account_list(kwargs["ci_path_list"])
     kwargs["tags_runner"] = get_runner_list(kwargs["ci_path_list"])
     kwargs["assume_role"] = get_aws_assume_role(kwargs["ci_path_list"])
-    kwargs["region"] = get_region_list(kwargs["ci_path_list"])
     return ci_template.render(kwargs)

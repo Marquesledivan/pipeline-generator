@@ -82,19 +82,17 @@ def get_env_list(_ci_path_list: List[CiPath]) -> List[str]:
 
 def get_account_list(_ci_path_list: List[CiPath]) -> List[str]:
     """Return an ordered list with the accounts"""
-    # (sorted(set(ci_path.path for ci_path in _ci_path_list)))
-    print(sorted(set(ci_path.account for ci_path in _ci_path_list)))
     return sorted(set(ci_path.account for ci_path in _ci_path_list))
 
 
 def get_region_list(_ci_path_list: List[CiPath]) -> List[str]:
     """Return an ordered list with the region"""
-    # (sorted(set(ci_path.path for ci_path in _ci_path_list)))
     return sorted(set(ci_path.region for ci_path in _ci_path_list if ci_path))
 
 
 def get_runner_list(_ci_path_list: List[CiPath]) -> List[str]:
     """Return an ordered list with the accounts"""
+    runner_ids = {}
     path = sorted(
         set(
             ci_path.provider
@@ -103,12 +101,15 @@ def get_runner_list(_ci_path_list: List[CiPath]) -> List[str]:
         ),
     )
     runner_id = sorted(set(ci_path.account for ci_path in _ci_path_list))
-    with open(path[0] + "/" + runner_id[0] + "/account.hcl") as f:
-        return hcl.load(f)["locals"]["runner_id"]
+    for runner in runner_id:
+        with open(path[0] + "/" + runner + "/account.hcl") as f:
+            runner_ids[runner] = hcl.load(f)["locals"]["runner_id"]
+    return runner_ids
 
 
 def get_aws_assume_role(_ci_path_list: List[CiPath]) -> List[str]:
     """Return an ordered list with the accounts"""
+    assume_roles = {}
     path = sorted(
         set(
             ci_path.provider
@@ -116,9 +117,11 @@ def get_aws_assume_role(_ci_path_list: List[CiPath]) -> List[str]:
             if ci_path.environment
         ),
     )
-    assume = sorted(set(ci_path.account for ci_path in _ci_path_list))
+    assume_id = sorted(set(ci_path.account for ci_path in _ci_path_list))
     try:
-        with open(path[0] + "/" + assume[0] + "/account.hcl") as f:
-            return hcl.load(f)["locals"]["assume_role"]
+        for assume in assume_id:
+            with open(path[0] + "/" + assume + "/account.hcl") as f:
+                assume_roles[assume] = hcl.load(f)["locals"]["assume_role"]
     except KeyError:
-        return ""
+        print("not assume role")
+    return assume_roles
