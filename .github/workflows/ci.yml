@@ -21,10 +21,7 @@ jobs:
         - name: Install dependencies
           run: |
               pip install black
-        
-        - name: Run Flake8 lint
-          run: flake8 --show-source
-
+  
         - name: Run Black formatter
           uses: wearerequired/lint-action@v2
           with:
