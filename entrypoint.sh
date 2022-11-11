@@ -3,6 +3,8 @@
 # Add local user
 # Either use the LOCAL_USER_ID if passed in at runtime or fallback
 
+pip install -r requirements.txt
+
 USER_ID=${LOCAL_USER_ID:-9001}
 
 if ! id craftech >/dev/null 2>&1; then
