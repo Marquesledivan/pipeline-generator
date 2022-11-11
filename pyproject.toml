@@ -1,0 +1,14 @@
+[tool.black]
+line-length = 79
+
+[tool.isort]
+profile = "black"
+
+[tool.pylint.messages_control]
+disable = ["import-error"]
+
+[tool.autopep8]
+max_line_length = 120
+in-place = true
+recursive = true
+aggressive = 3

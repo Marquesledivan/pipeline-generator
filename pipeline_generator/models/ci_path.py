@@ -2,9 +2,17 @@ import pathlib
 
 
 class CiPath:
-    def __init__(self, _path: pathlib.Path, account: str, env: str = '', region: str = ''):
+    def __init__(
+        self,
+        _path: pathlib.Path,
+        account: str,
+        provider: str,
+        env: str = "",
+        region: str = "",
+    ):
         self.path = _path
         self.account = account
+        self.provider = provider
         self.environment = env
         self.region = region
 

@@ -22,6 +22,7 @@ variables:
     - LOCATION=$(echo ${CI_JOB_NAME} | cut -d":" -f2)
     - cd ${LOCATION}
 {% if enable_asdf == "true" %}
+    - apt update && apt-get install gnupg -y
     - git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.10.2
     - . $HOME/.asdf/asdf.sh
     - asdf plugin-add terraform https://github.com/asdf-community/asdf-hashicorp.git
@@ -52,9 +53,9 @@ variables:
 
 {% for ci_path in ci_path_list  %}
 terragrunt-plan:{{ ci_path.path.parent }}:
-  extends: .{{ ci_path.region }}_terragrunt_plan_template
+  extends: .{{ ci_path.account }}_terragrunt_plan_template
   environment:
-    name: {{ ci_path.region|default(ci_path.account, true) }}
+    name: {{ ci_path.account|default(ci_path.account, true) }}
   only:
     refs:
       - {{ branch_name }}
@@ -67,9 +68,9 @@ terragrunt-plan:{{ ci_path.path.parent }}:
     expire_in: 1 day
 
 terragrunt-apply:{{ ci_path.path.parent }}:
-  extends: .{{ ci_path.region }}_terragrunt_apply_template
+  extends: .{{ ci_path.account }}_terragrunt_apply_template
   environment:
-    name: {{ ci_path.region|default(ci_path.account, true) }}
+    name: {{ ci_path.account|default(ci_path.account, true) }}
   only:
     refs:
       - {{ branch_name }}
