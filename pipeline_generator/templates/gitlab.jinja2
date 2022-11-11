@@ -99,7 +99,7 @@ variables:
 {% if assume_role[account]  %}
   variables:
     AWS_DEFAULT_REGION: ${AWS_REGION}
-    ASSUME_ROLE: {{ assume_role[account]  }}
+    ASSUME_ROLE: {{ assume_role[account] }}
   extends: .aws_cli_terragrunt_template
 {% else %}
   extends: .terragrunt_template
