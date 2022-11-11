@@ -70,9 +70,6 @@ jobs:
           context: .
           tags: ${{ secrets.DOCKER_REPOSITORY }}:latest, ${{ steps.version.outputs.tag }}
 
-      - name: Image digest
-        run: echo ${{ steps.docker_build.outputs.digest }}
-
   git_tags:
     runs-on: ubuntu-latest
     steps:
