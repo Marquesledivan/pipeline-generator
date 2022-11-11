@@ -22,7 +22,7 @@ variables:
     - LOCATION=$(echo ${CI_JOB_NAME} | cut -d":" -f2)
     - cd ${LOCATION}
 {% if enable_asdf == "true" %}
-    - apt update && apt-get install gnupg -y
+    - apt update && apt-get install gnupg awscli -y
     - git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.10.2
     - . $HOME/.asdf/asdf.sh
     - asdf plugin-add terraform https://github.com/asdf-community/asdf-hashicorp.git
@@ -32,10 +32,28 @@ variables:
     - tfenv install
 {% endif %}
 
+.aws_cli_terragrunt_template:
+  before_script:
+    - apt update && apt-get install awscli -y
+    - KST=(`aws sts assume-role --role-arn ${ASSUME_ROLE} --role-session-name "deployment-${CI_PROJECT_NAME}" --query '[Credentials.AccessKeyId,Credentials.SecretAccessKey,Credentials.SessionToken]' --output text`)
+    - export AWS_ACCESS_KEY_ID=${KST[0]}
+    - export AWS_SECRET_ACCESS_KEY=${KST[1]}
+    - export AWS_SESSION_TOKEN=${KST[2]}
+    - export AWS_SECURITY_TOKEN=${KST[2]}
+
 {% for account in account_list %}
 .{{ account }}_terragrunt_plan_template:
   stage: terragrunt-plan
+{% if assume_role %}
+  variables:
+    AWS_DEFAULT_REGION: {{ region[0] }}
+    ASSUME_ROLE: {{ assume_role }}
+  extends: 
+  - .terragrunt_template
+  - .aws_cli_terragrunt_template
+{% else %}
   extends: .terragrunt_template
+{% endif %}
   tags:
     - {{ tags_runner }}
   script:
@@ -43,12 +61,22 @@ variables:
 
 .{{ account }}_terragrunt_apply_template:
   stage: terragrunt-apply
+{% if assume_role %}
+  variables:
+    AWS_DEFAULT_REGION: {{ region[0] }}
+    ASSUME_ROLE: {{ assume_role }}
+  extends: 
+  - .terragrunt_template
+  - .aws_cli_terragrunt_template
+{% else %}
   extends: .terragrunt_template
+{% endif %}
   tags:
     - {{ tags_runner }}
   when: manual
   script:
     - terragrunt apply -input=false -refresh=false -auto-approve=true $TERRAPLAN_NAME
+
 {% endfor %}
 
 {% for ci_path in ci_path_list  %}
@@ -78,5 +106,5 @@ terragrunt-apply:{{ ci_path.path.parent }}:
       - {{ ci_path.path.parent }}/*
   dependencies:
     - terragrunt-plan:{{ ci_path.path.parent }}
-{% endfor %}
 
+{% endfor %}

@@ -54,7 +54,7 @@ GIT_PROVIDER_DICT = get_template_dict()
     "-b",
     "branch_name",
     type=str,
-    default="master",
+    default="main",
     show_default=True,
     help="Default branch name",
 )

@@ -83,7 +83,14 @@ def get_env_list(_ci_path_list: List[CiPath]) -> List[str]:
 def get_account_list(_ci_path_list: List[CiPath]) -> List[str]:
     """Return an ordered list with the accounts"""
     # (sorted(set(ci_path.path for ci_path in _ci_path_list)))
+    print(sorted(set(ci_path.account for ci_path in _ci_path_list)))
     return sorted(set(ci_path.account for ci_path in _ci_path_list))
+
+
+def get_region_list(_ci_path_list: List[CiPath]) -> List[str]:
+    """Return an ordered list with the region"""
+    # (sorted(set(ci_path.path for ci_path in _ci_path_list)))
+    return sorted(set(ci_path.region for ci_path in _ci_path_list if ci_path))
 
 
 def get_runner_list(_ci_path_list: List[CiPath]) -> List[str]:
@@ -98,3 +105,20 @@ def get_runner_list(_ci_path_list: List[CiPath]) -> List[str]:
     runner_id = sorted(set(ci_path.account for ci_path in _ci_path_list))
     with open(path[0] + "/" + runner_id[0] + "/account.hcl") as f:
         return hcl.load(f)["locals"]["runner_id"]
+
+
+def get_aws_assume_role(_ci_path_list: List[CiPath]) -> List[str]:
+    """Return an ordered list with the accounts"""
+    path = sorted(
+        set(
+            ci_path.provider
+            for ci_path in _ci_path_list
+            if ci_path.environment
+        ),
+    )
+    assume = sorted(set(ci_path.account for ci_path in _ci_path_list))
+    try:
+        with open(path[0] + "/" + assume[0] + "/account.hcl") as f:
+            return hcl.load(f)["locals"]["assume_role"]
+    except KeyError:
+        return ""
