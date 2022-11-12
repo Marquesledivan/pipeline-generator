@@ -8,70 +8,33 @@ default:
 variables:
   TERRAPLAN_NAME: tfplan
 
-.terragrunt_template:
-  before_script:
-    - mkdir -p ~/.ssh
-    - echo "$GITLAB_DEPLOY_KEY" | tr -d '\r' > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - eval $(ssh-agent -s)
-    - ssh-add ~/.ssh/id_rsa
-    - ssh-keyscan -H git.in.ripio.com >> ~/.ssh/known_hosts
-    - ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-    - LOCATION=$(echo ${CI_JOB_NAME} | cut -d":" -f2)
-    - cd ${LOCATION}
-    - apt update && apt-get install gnupg  -y
-    - git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.10.2
-    - . $HOME/.asdf/asdf.sh
-    - asdf plugin-add terraform https://github.com/asdf-community/asdf-hashicorp.git
-    - asdf plugin-add terragrunt https://github.com/ohmer/asdf-terragrunt.git
-    - asdf install
+.terragrunt_template: &terragrunt_template
+  - mkdir -p ~/.ssh
+  - echo "$GITLAB_DEPLOY_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+  - chmod 600 ~/.ssh/id_rsa
+  - eval $(ssh-agent -s)
+  - ssh-add ~/.ssh/id_rsa
+{% for extra_known_host in extra_known_hosts %}
+  - ssh-keyscan -H {{ extra_known_host }} >> ~/.ssh/known_hosts
+{% endfor %}
+  - ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+  - LOCATION=$(echo ${CI_JOB_NAME} | cut -d":" -f2)
+  - cd ${LOCATION}
+{% if enable_asdf == "true" %}
+  - apt update && apt-get install gnupg -y
+  - git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.10.2
+  - . $HOME/.asdf/asdf.sh
+  - asdf plugin-add terraform https://github.com/asdf-community/asdf-hashicorp.git
+  - asdf plugin-add terragrunt https://github.com/ohmer/asdf-terragrunt.git
+  - asdf install
+{% else %}
+  - tfenv install
+{% endif %}
 
 .aws_cli_terragrunt_template:
   before_script:
-    - mkdir -p ~/.ssh
-    - echo "$GITLAB_DEPLOY_KEY" | tr -d '\r' > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - eval $(ssh-agent -s)
-    - ssh-add ~/.ssh/id_rsa
-    - ssh-keyscan -H git.in.ripio.com >> ~/.ssh/known_hosts
-    - ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-    - LOCATION=$(echo ${CI_JOB_NAME} | cut -d":" -f2)
-    - cd ${LOCATION}
-    - apt update && apt-get install gnupg awscli -y
-    - git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.10.2
-    - . $HOME/.asdf/asdf.sh
-    - asdf plugin-add terraform https://github.com/asdf-community/asdf-hashicorp.git
-    - asdf plugin-add terragrunt https://github.com/ohmer/asdf-terragrunt.git
-    - asdf install
-    - KST=(`aws sts assume-role --role-arn ${ASSUME_ROLE} --role-session-name "deployment-${CI_PROJECT_NAME}" --query '[Credentials.AccessKeyId,Credentials.SecretAccessKey,Credentials.SessionToken]' --output text`)
-    - export AWS_ACCESS_KEY_ID=${KST[0]}
-    - export AWS_SECRET_ACCESS_KEY=${KST[1]}
-    - export AWS_SESSION_TOKEN=${KST[2]}
-    - export AWS_SECURITY_TOKEN=${KST[2]}
-
-.aws_cli_terragrunt_template:
-  before_script:
-    - mkdir -p ~/.ssh
-    - echo "$GITLAB_DEPLOY_KEY" | tr -d '\r' > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - eval $(ssh-agent -s)
-    - ssh-add ~/.ssh/id_rsa
-  {% for extra_known_host in extra_known_hosts %}
-    - ssh-keyscan -H {{ extra_known_host }} >> ~/.ssh/known_hosts
-  {% endfor %}
-    - ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-    - LOCATION=$(echo ${CI_JOB_NAME} | cut -d":" -f2)
-    - cd ${LOCATION}
-  {% if enable_asdf == "true" %}
-    - apt update && apt-get install gnupg awscli -y
-    - git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.10.2
-    - . $HOME/.asdf/asdf.sh
-    - asdf plugin-add terraform https://github.com/asdf-community/asdf-hashicorp.git
-    - asdf plugin-add terragrunt https://github.com/ohmer/asdf-terragrunt.git
-    - asdf install
-  {% else %}
-    - tfenv install
-  {% endif %}
+    - *terragrunt_template
+    - apt-get install awscli -y
     - KST=(`aws sts assume-role --role-arn ${ASSUME_ROLE} --role-session-name "deployment-${CI_PROJECT_NAME}" --query '[Credentials.AccessKeyId,Credentials.SecretAccessKey,Credentials.SessionToken]' --output text`)
     - export AWS_ACCESS_KEY_ID=${KST[0]}
     - export AWS_SECRET_ACCESS_KEY=${KST[1]}
@@ -87,7 +50,8 @@ variables:
     ASSUME_ROLE: {{ assume_role[account] }}
   extends: .aws_cli_terragrunt_template
 {% else %}
-  extends: .terragrunt_template
+  before_script:
+    - *terragrunt_template
 {% endif %}
   tags:
     - {{ tags_runner[account] }}
@@ -102,7 +66,8 @@ variables:
     ASSUME_ROLE: {{ assume_role[account] }}
   extends: .aws_cli_terragrunt_template
 {% else %}
-  extends: .terragrunt_template
+  before_script:
+    - *terragrunt_template
 {% endif %}
   tags:
     - {{ tags_runner[account] }}

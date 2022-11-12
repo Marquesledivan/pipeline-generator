@@ -1,11 +1,10 @@
 # pipeline-generator
 
-This is a Python CLI that generates *.gitlab-ci.yml* or *bitbucket-pipelines.yml* output  in **infrastructure-live** repositories.
-
+This is a Python CLI that generates *.gitlab-ci.yml* output  in **infrastructure-live** repositories.
 
 ## Prerequisites
 
-* Python 3.6 or higher
+* Python 3.10 or higher
 * pip
 * docker(optional)
 
@@ -74,85 +73,141 @@ Image requirements(already installed in the default image):
 * jq
 * pyhcl
 
-### Avoid GitLab variable inheritance conflicts
-
-Sometimes there are variables defined at group level like `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY`. These variables 
-have more precedence than job variables, check de documentation:
-
-https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
-
-To avoid this situation you can use the `--export-aws-vars` to export `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` variables
-in the script section. eg:
+## Examples
 
 ```yaml
-.dev_terragrunt_plan_template:
+stages:
+  - terragrunt-plan
+  - terragrunt-apply
+
+default:
+  image: craftech/ci-tools:iac-tools-85d40e6
+
+variables:
+  TERRAPLAN_NAME: tfplan
+
+.terragrunt_template: &terragrunt_template
+  - mkdir -p ~/.ssh
+  - echo "$GITLAB_DEPLOY_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+  - chmod 600 ~/.ssh/id_rsa
+  - eval $(ssh-agent -s)
+  - ssh-add ~/.ssh/id_rsa
+  - ssh-keyscan -H git.in.example.com >> ~/.ssh/known_hosts
+  - ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+  - LOCATION=$(echo ${CI_JOB_NAME} | cut -d":" -f2)
+  - cd ${LOCATION}
+  - apt update && apt-get install gnupg -y
+  - git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.10.2
+  - . $HOME/.asdf/asdf.sh
+  - asdf plugin-add terraform https://github.com/asdf-community/asdf-hashicorp.git
+  - asdf plugin-add terragrunt https://github.com/ohmer/asdf-terragrunt.git
+  - asdf install
+
+.aws_cli_terragrunt_template:
+  before_script:
+    - *terragrunt_template
+    - apt-get install awscli -y
+    - KST=(`aws sts assume-role --role-arn ${ASSUME_ROLE} --role-session-name "deployment-${CI_PROJECT_NAME}" --query '[Credentials.AccessKeyId,Credentials.SecretAccessKey,Credentials.SessionToken]' --output text`)
+    - export AWS_ACCESS_KEY_ID=${KST[0]}
+    - export AWS_SECRET_ACCESS_KEY=${KST[1]}
+    - export AWS_SESSION_TOKEN=${KST[2]}
+    - export AWS_SECURITY_TOKEN=${KST[2]}
+
+.example_terragrunt_plan_template:
   stage: terragrunt-plan
   variables:
-    AWS_ACCESS_KEY_ID: "$DEV_AWS_ACCESS_KEY_ID"
-    AWS_SECRET_ACCESS_KEY: "$DEV_AWS_SECRET_ACCESS_KEY"
-  extends: .terragrunt_template
+    AWS_DEFAULT_REGION: ${AWS_REGION}
+    ASSUME_ROLE: arn:aws:iam::000000000000000:role/example-devops-runner
+  extends: .aws_cli_terragrunt_template
+  tags:
+    - example-mgt
   script:
-    - export AWS_ACCESS_KEY_ID=$DEV_AWS_ACCESS_KEY_ID
-    - export AWS_SECRET_ACCESS_KEY=$DEV_AWS_SECRET_ACCESS_KEY
-    - terragrunt plan -input=false -refresh=true -out=$TERRAPLAN_NAME
+    - terragrunt plan --terragrunt-non-interactive -input=false -refresh=true -out=$TERRAPLAN_NAME
 
-.dev_terragrunt_apply_template:
+.example_terragrunt_apply_template:
   stage: terragrunt-apply
   variables:
-    AWS_ACCESS_KEY_ID: "$DEV_AWS_ACCESS_KEY_ID"
-    AWS_SECRET_ACCESS_KEY: "$DEV_AWS_SECRET_ACCESS_KEY"
-  extends: .terragrunt_template
+    AWS_DEFAULT_REGION: ${AWS_REGION}
+    ASSUME_ROLE: arn:aws:iam::000000000000000:role/example-devops-runner
+  extends: .aws_cli_terragrunt_template
+  tags:
+    - example-mgt
   when: manual
   script:
-    - export AWS_ACCESS_KEY_ID=$DEV_AWS_ACCESS_KEY_ID
-    - export AWS_SECRET_ACCESS_KEY=$DEV_AWS_SECRET_ACCESS_KEY
     - terragrunt apply -input=false -refresh=false -auto-approve=true $TERRAPLAN_NAME
 
-.mgt_terragrunt_plan_template:
+.exemplo_terragrunt_plan_template:
   stage: terragrunt-plan
-  variables:
-    AWS_ACCESS_KEY_ID: "$MGT_AWS_ACCESS_KEY_ID"
-    AWS_SECRET_ACCESS_KEY: "$MGT_AWS_SECRET_ACCESS_KEY"
-  extends: .terragrunt_template
+  before_script:
+    - *terragrunt_template
+  tags:
+    - example-prd
   script:
-    - export AWS_ACCESS_KEY_ID=$MGT_AWS_ACCESS_KEY_ID
-    - export AWS_SECRET_ACCESS_KEY=$MGT_AWS_SECRET_ACCESS_KEY
-    - terragrunt plan -input=false -refresh=true -out=$TERRAPLAN_NAME
+    - terragrunt plan --terragrunt-non-interactive -input=false -refresh=true -out=$TERRAPLAN_NAME
 
-.mgt_terragrunt_apply_template:
+.exemplo_terragrunt_apply_template:
   stage: terragrunt-apply
-  variables:
-    AWS_ACCESS_KEY_ID: "$MGT_AWS_ACCESS_KEY_ID"
-    AWS_SECRET_ACCESS_KEY: "$MGT_AWS_SECRET_ACCESS_KEY"
-  extends: .terragrunt_template
+  before_script:
+    - *terragrunt_template
+  tags:
+    - example-prd
   when: manual
   script:
-    - export AWS_ACCESS_KEY_ID=$MGT_AWS_ACCESS_KEY_ID
-    - export AWS_SECRET_ACCESS_KEY=$MGT_AWS_SECRET_ACCESS_KEY
     - terragrunt apply -input=false -refresh=false -auto-approve=true $TERRAPLAN_NAME
 
-.prd_terragrunt_plan_template:
-  stage: terragrunt-plan
+terragrunt-plan:aws/example/us-east-1/alb/example:
+  extends: .example_terragrunt_plan_template
   variables:
-    AWS_ACCESS_KEY_ID: "$PRD_AWS_ACCESS_KEY_ID"
-    AWS_SECRET_ACCESS_KEY: "$PRD_AWS_SECRET_ACCESS_KEY"
-  extends: .terragrunt_template
-  script:
-    - export AWS_ACCESS_KEY_ID=$PRD_AWS_ACCESS_KEY_ID
-    - export AWS_SECRET_ACCESS_KEY=$PRD_AWS_SECRET_ACCESS_KEY
-    - terragrunt plan -input=false -refresh=true -out=$TERRAPLAN_NAME
+    AWS_REGION: us-east-1
+  only:
+    refs:
+      - main
+    changes:
+      - aws/example/us-east-1/alb/example/*
+  artifacts:
+    paths:
+      - aws/example/us-east-1/alb/example/.terragrunt-cache
+    expose_as: 'tfplan'
+    expire_in: 1 day
 
-.prd_terragrunt_apply_template:
-  stage: terragrunt-apply
+terragrunt-apply:aws/example/us-east-1/alb/example:
+  extends: .example_terragrunt_apply_template
   variables:
-    AWS_ACCESS_KEY_ID: "$PRD_AWS_ACCESS_KEY_ID"
-    AWS_SECRET_ACCESS_KEY: "$PRD_AWS_SECRET_ACCESS_KEY"
-  extends: .terragrunt_template
-  when: manual
-  script:
-    - export AWS_ACCESS_KEY_ID=$PRD_AWS_ACCESS_KEY_ID
-    - export AWS_SECRET_ACCESS_KEY=$PRD_AWS_SECRET_ACCESS_KEY
-    - terragrunt apply -input=false -refresh=false -auto-approve=true $TERRAPLAN_NAME
+     AWS_REGION: us-east-1
+  only:
+    refs:
+      - main
+    changes:
+      - aws/example/us-east-1/alb/example/*
+  dependencies:
+    - terragrunt-plan:aws/example/us-east-1/alb/example
+
+terragrunt-plan:aws/exemplo/us-east-1/s3/cloudformation-stacksets:
+  extends: .exemplo_terragrunt_plan_template
+  variables:
+    AWS_REGION: us-east-1
+  only:
+    refs:
+      - main
+    changes:
+      - aws/exemplo/us-east-1/s3/cloudformation-stacksets/*
+  artifacts:
+    paths:
+      - aws/exemplo/us-east-1/s3/cloudformation-stacksets/.terragrunt-cache
+    expose_as: 'tfplan'
+    expire_in: 1 day
+
+terragrunt-apply:aws/exemplo/us-east-1/s3/cloudformation-stacksets:
+  extends: .exemplo_terragrunt_apply_template
+  variables:
+     AWS_REGION: us-east-1
+  only:
+    refs:
+      - main
+    changes:
+      - aws/exemplo/us-east-1/s3/cloudformation-stacksets/*
+  dependencies:
+    - terragrunt-plan:aws/exemplo/us-east-1/s3/cloudformation-stacksets
 ```
 
 ### CLI help
@@ -190,124 +245,4 @@ Run a temporary container to execute de CLI:
 
 ```shell
 $ docker run --rm -it --name pipeline-generator --env LOCAL_USER_ID=$(id -u) -v `pwd`:`pwd` -w `pwd` pipeline-generator:latest /bin/sh
-```
-
-
-## Examples
-
-
-```shell
-$ cd ~/repos/foo/infra/infrastructure-live-foo
-$ pipeline-generator -i "ledivanbernardomarques/ci-tools:iac-tools-85d40e6" -e gitlab.foo.com -p gitlab
-
-stages:
-  - terragrunt plan
-  - terragrunt apply
-
-default:
-  image: craftech/ci-tools:iac-tools-85d40e6
-
-variables:
-  PLAN_OUT_DIR: $CI_PROJECT_DIR/plan-outs
-
-.terragrunt_template:
-  before_script:
-    - mkdir -p ~/.ssh
-    - echo "$GITLAB_DEPLOY_KEY" | tr -d '\r' > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - eval $(ssh-agent -s)
-    - ssh-add ~/.ssh/id_rsa
-    - ssh-keyscan -H gitlab.foo.com >> ~/.ssh/known_hosts
-    - ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-    - LOCATION=$(echo ${CI_JOB_NAME} | cut -d":" -f2)
-    - cd ${LOCATION}
-
-
-.dev_terragrunt_plan_template:
-  stage: terragrunt plan
-  variables:
-    AWS_ACCESS_KEY_ID: "$DEV_AWS_ACCESS_KEY_ID"
-    AWS_SECRET_ACCESS_KEY: "$DEV_AWS_SECRET_ACCESS_KEY"
-  extends: .terragrunt_template
-  script:
-    - mkdir -p $PLAN_OUT_DIR/${CI_JOB_NAME}
-    - terragrunt plan -input=false -refresh=true
-
-.dev_terragrunt_apply_template:
-  stage: terragrunt apply
-  variables:
-    AWS_ACCESS_KEY_ID: "$DEV_AWS_ACCESS_KEY_ID"
-    AWS_SECRET_ACCESS_KEY: "$DEV_AWS_SECRET_ACCESS_KEY"
-  extends: .terragrunt_template
-  when: manual
-  script:
-    - terragrunt apply -input=false -refresh=false -auto-approve=true
-
-.prd_terragrunt_plan_template:
-  stage: terragrunt plan
-  variables:
-    AWS_ACCESS_KEY_ID: "$PRD_AWS_ACCESS_KEY_ID"
-    AWS_SECRET_ACCESS_KEY: "$PRD_AWS_SECRET_ACCESS_KEY"
-  extends: .terragrunt_template
-  script:
-    - mkdir -p $PLAN_OUT_DIR/${CI_JOB_NAME}
-    - terragrunt plan -input=false -refresh=true
-
-.prd_terragrunt_apply_template:
-  stage: terragrunt apply
-  variables:
-    AWS_ACCESS_KEY_ID: "$PRD_AWS_ACCESS_KEY_ID"
-    AWS_SECRET_ACCESS_KEY: "$PRD_AWS_SECRET_ACCESS_KEY"
-  extends: .terragrunt_template
-  when: manual
-  script:
-    - terragrunt apply -input=false -refresh=false -auto-approve=true
-
-terragrunt-plan:dev/_global/route53/dev.foo.com:
-  extends: .dev_terragrunt_plan_template
-  only:
-    refs:
-      - master
-    changes:
-      - dev/_global/route53/dev.foo.com/terragrunt.hcl
-
-terragrunt-apply:dev/_global/route53/dev.foo.com:
-  extends: .dev_terragrunt_apply_template
-  only:
-    refs:
-      - master
-    changes:
-      - dev/_global/route53/dev.foo.com/terragrunt.hcl
-
-terragrunt-plan:dev/us-east-1/_global/vpc:
-  extends: .dev_terragrunt_plan_template
-  only:
-    refs:
-      - master
-    changes:
-      - dev/us-east-1/_global/vpc/terragrunt.hcl
-
-terragrunt-apply:dev/us-east-1/_global/vpc:
-  extends: .dev_terragrunt_apply_template
-  only:
-    refs:
-      - master
-    changes:
-      - dev/us-east-1/_global/vpc/terragrunt.hcl
-
-terragrunt-plan:dev/us-east-1/_global/acm:
-  extends: .dev_terragrunt_plan_template
-  only:
-    refs:
-      - master
-    changes:
-      - dev/us-east-1/_global/acm/terragrunt.hcl
-
-terragrunt-apply:dev/us-east-1/_global/acm:
-  extends: .dev_terragrunt_apply_template
-  only:
-    refs:
-      - master
-    changes:
-      - dev/us-east-1/_global/acm/terragrunt.hcl
 ```
