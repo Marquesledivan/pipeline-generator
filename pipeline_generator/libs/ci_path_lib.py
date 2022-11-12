@@ -123,5 +123,5 @@ def get_aws_assume_role(_ci_path_list: List[CiPath]) -> List[str]:
             with open(path[0] + "/" + assume + "/account.hcl") as f:
                 assume_roles[assume] = hcl.load(f)["locals"]["assume_role"]
     except KeyError:
-        print("not assume role")
+        pass
     return assume_roles
