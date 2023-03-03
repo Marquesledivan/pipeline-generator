@@ -118,10 +118,9 @@ def get_aws_assume_role(_ci_path_list: List[CiPath]) -> List[str]:
         ),
     )
     assume_id = sorted(set(ci_path.account for ci_path in _ci_path_list))
-    try:
-        for assume in assume_id:
-            with open(path[0] + "/" + assume + "/account.hcl") as f:
-                assume_roles[assume] = hcl.load(f)["locals"]["assume_role"]
-    except KeyError:
-        pass
+    for assume in assume_id:
+        with open(path[0] + "/" + assume + "/account.hcl") as f:
+            path_role = hcl.load(f)["locals"]
+            if "assume_role" in path_role:
+                assume_roles[assume] = path_role["assume_role"]
     return assume_roles
