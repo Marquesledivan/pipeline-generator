@@ -80,7 +80,7 @@ variables:
 terragrunt-plan:{{ ci_path.path.parent }}:
   extends: .{{ ci_path.account }}_terragrunt_plan_template
   variables:
-    AWS_REGION: {{ ci_path.region|default(ci_path.account, true) }}
+    AWS_REGION: us-east-1
   only:
     refs:
       - {{ branch_name }}
@@ -95,7 +95,7 @@ terragrunt-plan:{{ ci_path.path.parent }}:
 terragrunt-apply:{{ ci_path.path.parent }}:
   extends: .{{ ci_path.account }}_terragrunt_apply_template
   variables:
-     AWS_REGION: {{ ci_path.region|default(ci_path.account, true) }}
+     AWS_REGION: us-east-1
   only:
     refs:
       - {{ branch_name }}
